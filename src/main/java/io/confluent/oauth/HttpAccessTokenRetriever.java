@@ -24,6 +24,8 @@ package io.confluent.oauth;
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.credential.TokenRequestContext;
+import com.azure.identity.AzureCliCredential;
+import com.azure.identity.AzureCliCredentialBuilder;
 import com.azure.identity.CredentialUnavailableException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -129,6 +131,7 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
     private final Map<String, String> headers = new HashMap<>();
 
     private final boolean useWorkloadIdentity;
+    private boolean useUserIdentity;
 
     public HttpAccessTokenRetriever(String clientId,
         String clientSecret,
@@ -140,10 +143,12 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
         Integer loginConnectTimeoutMs,
         Integer loginReadTimeoutMs,
         String requestMethod,
-        boolean useWorkloadIdentity) {
+        boolean useWorkloadIdentity,
+        boolean useUserIdentity) {
         this.clientId = Objects.requireNonNull(clientId);
         this.clientSecret = Objects.requireNonNull(clientSecret);
         this.useWorkloadIdentity = useWorkloadIdentity;
+        this.useUserIdentity = useUserIdentity;
         this.scope = scope;
         this.sslSocketFactory = sslSocketFactory;
         this.tokenEndpointUrl = Objects.requireNonNull(tokenEndpointUrl);
@@ -185,6 +190,14 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
                 return azureIdentityAccessToken.getToken();
             }
 
+            if (this.useUserIdentity) {
+                log.debug("using user identity to get token");
+                AzureCliCredential cliCredential = new AzureCliCredentialBuilder().build();
+                TokenRequestContext tokenRequestContext = new TokenRequestContext().addScopes(scope);
+                AccessToken azureIdentityAccessToken = cliCredential.getTokenSync(tokenRequestContext);
+                log.trace("useUserIdentity token, got token from AzureAD: '{}'", azureIdentityAccessToken.getToken());
+                return azureIdentityAccessToken.getToken();
+            }
 
             String authorizationHeader = formatAuthorizationHeader(clientId, clientSecret);
             String requestBody = requestMethod == "GET" ? null : formatRequestBody(scope);

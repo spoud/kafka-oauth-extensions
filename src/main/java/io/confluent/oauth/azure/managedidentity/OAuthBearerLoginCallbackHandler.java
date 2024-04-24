@@ -169,6 +169,7 @@ public class OAuthBearerLoginCallbackHandler implements AuthenticateCallbackHand
     public static final String CLIENT_SECRET_CONFIG = "clientSecret";
     public static final String SCOPE_CONFIG = "scope";
     public static final String USE_WORKLOAD_IDENTITY_CONFIG = "useWorkloadIdentity";
+    public static final String USE_USER_IDENTITY_CONFIG = "useUserIdentity";
 
     public static final String CLIENT_ID_DOC = "The OAuth/OIDC identity provider-issued " +
         "client ID to uniquely identify the service account to use for authentication for " +
@@ -192,6 +193,11 @@ public class OAuthBearerLoginCallbackHandler implements AuthenticateCallbackHand
     public static final String USE_WORKLOAD_IDENTITY_DOC = "The (optional) HTTP/HTTPS login request to the " +
             "token endpoint (" + SASL_OAUTHBEARER_TOKEN_ENDPOINT_URL + ") may need to specify an " +
             "'Authorization' header of the Workload Identity. If so, the " + USE_WORKLOAD_IDENTITY_CONFIG +
+            " must be set to true";
+
+    public static final String USE_USER_IDENTITY_CONFIG_DOC = "The (optional) HTTP/HTTPS login request to the " +
+            "token endpoint (" + SASL_OAUTHBEARER_TOKEN_ENDPOINT_URL + ") may need to specify an " +
+            "'Authorization' header of the User Identity. If so, the " + USE_USER_IDENTITY_CONFIG +
             " must be set to true";
 
     private static final String EXTENSION_PREFIX = "extension_";
@@ -239,7 +245,8 @@ public class OAuthBearerLoginCallbackHandler implements AuthenticateCallbackHand
         final String clientId = jou.validateString(CLIENT_ID_CONFIG);
         final String clientSecret = jou.validateString(CLIENT_SECRET_CONFIG);
         final String scope = jou.validateString(SCOPE_CONFIG, false);
-        final boolean useWorkloadIdentity = jou.validateString(USE_WORKLOAD_IDENTITY_CONFIG).equalsIgnoreCase("true");
+        final boolean useWorkloadIdentity = Optional.ofNullable(jou.validateString(USE_WORKLOAD_IDENTITY_CONFIG, false)).orElse("false").equalsIgnoreCase("true");
+        final boolean useUserIdentity = Optional.ofNullable(jou.validateString(USE_USER_IDENTITY_CONFIG, false)).orElse("false").equalsIgnoreCase("true");
 
         SSLSocketFactory sslSocketFactory = null;
 
@@ -261,7 +268,8 @@ public class OAuthBearerLoginCallbackHandler implements AuthenticateCallbackHand
                 cu.validateInteger(SASL_LOGIN_CONNECT_TIMEOUT_MS, false),
                 cu.validateInteger(SASL_LOGIN_READ_TIMEOUT_MS, false),
                 "GET",
-                useWorkloadIdentity);
+                useWorkloadIdentity,
+                useUserIdentity);
 
         httpAccessTokenRetriever.getHeaders().put("Metadata", "true");
         return httpAccessTokenRetriever;
