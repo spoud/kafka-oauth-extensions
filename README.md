@@ -69,7 +69,7 @@ az login --scope ${CONFLUENT_CLOUD_APP_ID}/.default --tenant ${AZURE_TENANT_ID}
 # AADSTS650057: Invalid resource. The client has requested access to a resource which is not listed in the requested permissions in the client's application registration. Client app ID: 04b07795-8ddb-461a-bbee-02f9e1bf7b46(Microsoft Azure CLI). Resource value from request: ${CONFLUENT_CLOUD_APP_ID}. Resource app ID: ${CONFLUENT_CLOUD_APP_ID}. List of valid resources from app registration:...'
 
 
-cat > client.properties <<EOF
+cat > /tmp/client.properties <<EOF
 security.protocol=SASL_SSL
 sasl.oauthbearer.token.endpoint.url=${AZURE_AUTHORITY_HOST}${AZURE_TENANT_ID}/oauth2/v2.0/token
 
@@ -81,7 +81,8 @@ sasl.jaas.config= \
        clientId='ignored' \
        clientSecret='ignored' \
        useUserIdentity='true' \
-       scope='${CONFLUENT_CLOUD_APP_ID}/.default' \
+       useWorkloadIdentity='false' \
+       scope='${CONFLUENT_CLOUD_APP_ID}' \
        extension_logicalCluster='lkc-xxxxx' \
        extension_identityPoolId='pool-xxxx';
 EOF
@@ -95,4 +96,16 @@ echo '{"make": "Ford", "model": "Mustang", "price": 10000}' |kafka-avro-console-
 --producer.config client.properties --reader-config client.properties --topic cars \
 --property value.schema='{"type": "record", "name": "Car", "namespace": "io.spoud.training", "fields": [{"name": "make", "type": "string"}, {"name": "model", "type": "string"}, {"name": "price", "type": "int", "default":  0}]}'
 
+```
+
+
+## Debug
+
+
+To debug the OAuth flow, you can enable debug logging for the OAuthBearerLoginModule by setting the following system property:
+
+```bash
+export KAFKA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=${AZURE_AUTHORITY_HOST}${AZURE_TENANT_ID}/oauth2/v2.0/token"
+export CLASSPATH="build/libs/confluent-oauth-extensions-1.1-SNAPSHOT-all.jar"
+kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER} --command-config /tmp/client.properties --list
 ```

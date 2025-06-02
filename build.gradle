@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'com.gradleup.shadow' version '8.3.6'
 }
 
 group 'io.confluent.oauth'
@@ -10,15 +11,17 @@ repositories {
     maven {
         url = uri("https://packages.confluent.io/maven")
     }
+    gradlePluginPortal()
 }
 
 dependencies {
-    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '3.7.0'
-    implementation group: 'io.confluent', name: 'kafka-schema-registry-client', version: '7.6.0'
+    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '3.9.0'
+    implementation group: 'io.confluent', name: 'kafka-schema-registry-client', version: '7.9.1'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
     implementation 'org.bitbucket.b_c:jose4j:0.9.6'
     implementation 'org.slf4j:slf4j-api:1.7.36'
-    implementation 'com.azure:azure-identity:1.12.0'
+    implementation 'com.azure:azure-identity:1.12.2'
+    implementation 'com.gradleup.shadow:shadow-gradle-plugin:8.3.6'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 }
