@@ -8,3 +8,7 @@ This project contains the following code copied from Apache Kafka:
 
 clients/src/main/java/org/apache/kafka/common/security/oauthbearer/secured/OAuthBearerLoginCallbackHandler.java
 clients/src/main/java/org/apache/kafka/common/security/oauthbearer/secured/HttpAccessTokenRetriever.java
+
+This project contains the following code copied from confluent-oauth-extensions
+
+https://github.com/confluentinc/confluent-oauth-extensions

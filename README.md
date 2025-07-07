@@ -1,4 +1,6 @@
-# confluent-oauth-extensions
+# SPOUD kafka-oauth-extensions
+
+This is a fork of the Confluent OAuth extensions for Apache Kafka, with additional support for Azure Managed Identities and Workload Identities.
 
 Apache Kafka client library providing additional integrations relating to OAuth/OIDC integrations with Confluent Cloud and Apache Kafka.
 
@@ -101,11 +103,10 @@ echo '{"make": "Ford", "model": "Mustang", "price": 10000}' |kafka-avro-console-
 
 ## Debug
 
-
 To debug the OAuth flow, you can enable debug logging for the OAuthBearerLoginModule by setting the following system property:
 
 ```bash
 export KAFKA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=${AZURE_AUTHORITY_HOST}${AZURE_TENANT_ID}/oauth2/v2.0/token"
-export CLASSPATH="build/libs/confluent-oauth-extensions-1.1-SNAPSHOT-all.jar"
+export CLASSPATH="build/libs/kafka-oauth-extensions-1.2-SNAPSHOT-all.jar"
 kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER} --command-config /tmp/client.properties --list
 ```
