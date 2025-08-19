@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '3.9.0'
+    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '8.0.0-ce'
     implementation group: 'io.confluent', name: 'kafka-schema-registry-client', version: '7.9.1'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
     implementation 'org.bitbucket.b_c:jose4j:0.9.6'
