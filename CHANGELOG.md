@@ -19,3 +19,10 @@ Migrated to spoud github repository https://github.com/spoud/kafka-oauth-extensi
 * user account support with azure cli
 * support for schema registry
 * introduced github package
+
+
+# 1.3-SNAPSHOT
+
+* Updated to Apache Kafka 4
+* Testing
+* Dependabot
