@@ -192,7 +192,7 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
 
             if (this.useUserIdentity) {
                 log.debug("using user identity to get token");
-                AzureCliCredential cliCredential = new AzureCliCredentialBuilder().build();
+                AzureCliCredential cliCredential = createAzureCliCredentialBuilder().build();
                 TokenRequestContext tokenRequestContext = new TokenRequestContext().addScopes(scope);
                 AccessToken azureIdentityAccessToken = cliCredential.getTokenSync(tokenRequestContext);
                 log.trace("useUserIdentity token, got token from AzureAD: '{}'", azureIdentityAccessToken.getToken());
@@ -388,7 +388,7 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
         }
     }
 
-    private static String sanitizeString(String name, String value) {
+    static String sanitizeString(String name, String value) {
         if (value == null)
             throw new IllegalArgumentException(String.format("The value for %s must be non-null", name));
 
@@ -403,4 +403,8 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
         return value;
     }
 
+    // Factory method for testability
+    static AzureCliCredentialBuilder createAzureCliCredentialBuilder() {
+        return new AzureCliCredentialBuilder();
+    }
 }
