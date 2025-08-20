@@ -23,6 +23,8 @@ import com.azure.identity.WorkloadIdentityCredentialBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.Function;
+
 public class WorkloadIdentityUtils {
 
         private static final Logger log = LoggerFactory.getLogger(WorkloadIdentityUtils.class);
@@ -34,32 +36,45 @@ public class WorkloadIdentityUtils {
         public static final String AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_TENANT_ID = "AZURE_TENANT_ID";
         public static final String AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_CLIENT_ID = "AZURE_CLIENT_ID";
 
+        // For testability: allow overriding environment variable lookup
+        private static Function<String, String> getenv = System::getenv;
+
+        /**
+         * For testing only. Allows tests to inject a custom environment variable lookup.
+         */
+        static void setEnvProvider(Function<String, String> customGetenv) {
+            getenv = customGetenv != null ? customGetenv : System::getenv;
+        }
+
+        static void resetEnvProvider() {
+            getenv = System::getenv;
+        }
 
         public static String getTenantId() {
-                String tenantId = System.getenv(WorkloadIdentityUtils.AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_TENANT_ID);
+                String tenantId = getenv.apply(AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_TENANT_ID);
                 if (tenantId == null || tenantId.equals(""))
-                        throw new WorkloadIdentityKafkaClientOAuthBearerAuthenticationException(String.format("Missing environment variable %s", WorkloadIdentityUtils.AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_TENANT_ID));
+                        throw new WorkloadIdentityKafkaClientOAuthBearerAuthenticationException(String.format("Missing environment variable %s", AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_TENANT_ID));
                 log.debug("Config: Tenant Id " + tenantId);
                 return tenantId;
         }
 
         public static String getClientId() {
-                String clientId = System.getenv(WorkloadIdentityUtils.AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_CLIENT_ID);
+                String clientId = getenv.apply(AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_CLIENT_ID);
                 if (clientId == null || clientId.equals(""))
-                        throw new WorkloadIdentityKafkaClientOAuthBearerAuthenticationException(String.format("Missing environment variable %s", WorkloadIdentityUtils.AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_CLIENT_ID));
+                        throw new WorkloadIdentityKafkaClientOAuthBearerAuthenticationException(String.format("Missing environment variable %s", AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_CLIENT_ID));
                 log.debug("Config: Client Id " + clientId);
                 return clientId;
         }
 
         public static WorkloadIdentityCredential createWorkloadIdentityCredentialFromEnvironment() {
-                String federatedTokeFilePath = System.getenv(WorkloadIdentityUtils.AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_FEDERATED_TOKEN_FILE);
+                String federatedTokeFilePath = getenv.apply(AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_FEDERATED_TOKEN_FILE);
                 if (federatedTokeFilePath == null || federatedTokeFilePath.equals(""))
-                        throw new WorkloadIdentityKafkaClientOAuthBearerAuthenticationException(String.format("Missing environment variable %s", WorkloadIdentityUtils.AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_FEDERATED_TOKEN_FILE));
+                        throw new WorkloadIdentityKafkaClientOAuthBearerAuthenticationException(String.format("Missing environment variable %s", AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_FEDERATED_TOKEN_FILE));
                 log.debug("Config: Federated Token File Path " + federatedTokeFilePath);
 
-                String authorityHost = System.getenv(WorkloadIdentityUtils.AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_AUTHORITY_HOST);
+                String authorityHost = getenv.apply(AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_AUTHORITY_HOST);
                 if (authorityHost == null || authorityHost.equals(""))
-                        throw new WorkloadIdentityKafkaClientOAuthBearerAuthenticationException(String.format("Missing environment variable %s", WorkloadIdentityUtils.AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_AUTHORITY_HOST));
+                        throw new WorkloadIdentityKafkaClientOAuthBearerAuthenticationException(String.format("Missing environment variable %s", AZURE_AD_WORKLOAD_IDENTITY_MUTATING_ADMISSION_WEBHOOK_ENV_AUTHORITY_HOST));
                 log.debug("Config: Authority host " + authorityHost);
                 
                 String tenantId = getTenantId(); 
@@ -81,6 +96,7 @@ public class WorkloadIdentityUtils {
 
                 String tenantId = getTenantId(); 
                 String clientId = getClientId();
+
 
                 //Construct a TokenRequestContext to be used be requsting a token at runtime.
                 String usedScope =  clientId + "/.default";
