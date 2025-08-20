@@ -16,12 +16,12 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '3.9.0'
-    implementation group: 'io.confluent', name: 'kafka-schema-registry-client', version: '7.9.1'
+    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '4.0.0'
+    implementation group: 'io.confluent', name: 'kafka-schema-registry-client', version: '8.0.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.2'
     implementation 'org.bitbucket.b_c:jose4j:0.9.6'
     implementation 'org.slf4j:slf4j-api:2.0.17'
-    implementation 'com.azure:azure-identity:1.12.2'
+    implementation 'com.azure:azure-identity:1.16.1'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.13.4'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.13.4'
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"

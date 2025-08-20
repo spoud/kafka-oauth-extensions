@@ -110,3 +110,19 @@ export KAFKA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address
 export CLASSPATH="build/libs/kafka-oauth-extensions-1.2-SNAPSHOT-all.jar"
 kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER} --command-config /tmp/client.properties --list
 ```
+
+## Kafka OAuthBearer Allowed URLs (Kafka 4+ Security Feature)
+
+Kafka 4 introduces a new security feature: by default, only explicitly allowed OAuth token endpoint URLs can be used with the SASL/OAUTHBEARER mechanism. If you use a custom OAuth endpoint (for example, `https://example.com/token`), you must set the system property `org.apache.kafka.sasl.oauthbearer.allowed.urls` to include your endpoint:
+
+```
+System.setProperty("org.apache.kafka.sasl.oauthbearer.allowed.urls", "https://example.com/token");
+```
+
+If you do not set this property, you may see errors like:
+
+```
+https://example.com/token is not allowed. Update system property 'org.apache.kafka.sasl.oauthbearer.allowed.urls' to allow https://example.com/token
+```
+
+This property is required both in production and in tests if you use non-default endpoints. Update this property accordingly if you add or change OAuth endpoints in your configuration or tests.

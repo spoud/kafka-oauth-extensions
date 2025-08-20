@@ -2,6 +2,8 @@ package io.confluent.oauth.azure.managedidentity;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.security.oauthbearer.internals.secured.AccessTokenRetriever;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.security.auth.login.AppConfigurationEntry;
@@ -10,6 +12,24 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class OAuthBearerLoginCallbackHandlerConfigureTest {
+    private static final String ALLOWED_URLS_PROP = "org.apache.kafka.sasl.oauthbearer.allowed.urls";
+    private String oldAllowedUrls;
+
+    @BeforeEach
+    void setUpAllowedUrls() {
+        oldAllowedUrls = System.getProperty(ALLOWED_URLS_PROP);
+        System.setProperty(ALLOWED_URLS_PROP, "https://example.com/token");
+    }
+
+    @AfterEach
+    void restoreAllowedUrls() {
+        if (oldAllowedUrls != null) {
+            System.setProperty(ALLOWED_URLS_PROP, oldAllowedUrls);
+        } else {
+            System.clearProperty(ALLOWED_URLS_PROP);
+        }
+    }
+
     @Test
     void testConfigureInitializesHandler() {
         OAuthBearerLoginCallbackHandler handler = new OAuthBearerLoginCallbackHandler();
