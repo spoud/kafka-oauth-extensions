@@ -21,12 +21,12 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
     implementation 'org.bitbucket.b_c:jose4j:0.9.6'
     implementation 'org.slf4j:slf4j-api:2.0.17'
-    implementation 'com.azure:azure-identity:1.17.0'
+    implementation 'com.azure:azure-identity:1.18.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.13.4'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.13.4'
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-    testImplementation 'org.mockito:mockito-core:5.19.0'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.19.0'
+    testImplementation 'org.mockito:mockito-core:5.20.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.20.0'
 }
 
 test {
