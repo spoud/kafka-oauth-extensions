@@ -1,15 +1,19 @@
 package io.confluent.oauth.azure.managedidentity;
 
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.security.oauthbearer.internals.secured.AccessTokenRetriever;
+import org.apache.kafka.common.security.oauthbearer.JwtRetriever;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.security.auth.login.AppConfigurationEntry;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OAuthBearerLoginCallbackHandlerConfigureTest {
     private static final String ALLOWED_URLS_PROP = "org.apache.kafka.sasl.oauthbearer.allowed.urls";
@@ -44,13 +48,12 @@ class OAuthBearerLoginCallbackHandlerConfigureTest {
         List<AppConfigurationEntry> jaasConfigEntries = Collections.singletonList(
                 new AppConfigurationEntry("org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule", AppConfigurationEntry.LoginModuleControlFlag.REQUIRED, jaasOptions)
         );
-        // Should not throw
         handler.configure(configs, "OAUTHBEARER", jaasConfigEntries);
-        assertNotNull(handler.getAccessTokenRetriever());
+        assertNotNull(handler.getJwtRetriever());
     }
 
     @Test
-    void testCreateAccessTokenRetrieverReturnsConfiguredRetriever() {
+    void testCreateJwtRetrieverReturnsConfiguredRetriever() {
         Map<String, Object> configs = new HashMap<>();
         configs.put("sasl.oauthbearer.token.endpoint.url", "https://example.com/token");
         configs.put("scope", "myscope");
@@ -60,19 +63,48 @@ class OAuthBearerLoginCallbackHandlerConfigureTest {
         jaasConfig.put("clientId", "id");
         jaasConfig.put("clientSecret", "secret");
         jaasConfig.put("scope", "myscope");
-        // Should not throw
-        AccessTokenRetriever retriever = OAuthBearerLoginCallbackHandler.createAccessTokenRetriever(configs, "OAUTHBEARER", jaasConfig);
+        JwtRetriever retriever = OAuthBearerLoginCallbackHandler.createJwtRetriever(configs, "OAUTHBEARER", jaasConfig);
         assertNotNull(retriever);
     }
 
     @Test
-    void testCreateAccessTokenRetrieverThrowsOnMissingConfig() {
+    void testCreateJwtRetrieverThrowsOnMissingConfig() {
         Map<String, Object> configs = new HashMap<>();
         configs.put("sasl.oauthbearer.token.endpoint.url", "https://example.com/token");
         configs.put("scope", "myscope");
         Map<String, Object> jaasConfig = new HashMap<>();
         // missing clientId and clientSecret
         assertThrows(ConfigException.class, () ->
-                OAuthBearerLoginCallbackHandler.createAccessTokenRetriever(configs, "OAUTHBEARER", jaasConfig));
+                OAuthBearerLoginCallbackHandler.createJwtRetriever(configs, "OAUTHBEARER", jaasConfig));
+    }
+
+    @Test
+    void testCreateJwtRetrieverEnablesWorkloadIdentityFromJaas() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("sasl.oauthbearer.token.endpoint.url", "https://example.com/token");
+
+        Map<String, Object> jaasConfig = new HashMap<>();
+        jaasConfig.put("clientId", "id");
+        jaasConfig.put("clientSecret", "secret");
+        jaasConfig.put("scope", "myscope");
+        jaasConfig.put("useWorkloadIdentity", "true");
+
+        JwtRetriever retriever = OAuthBearerLoginCallbackHandler.createJwtRetriever(configs, "OAUTHBEARER", jaasConfig);
+        assertNotNull(retriever);
+    }
+
+    @Test
+    void testCreateJwtRetrieverEnablesUserIdentityFromJaas() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("sasl.oauthbearer.token.endpoint.url", "https://example.com/token");
+
+        Map<String, Object> jaasConfig = new HashMap<>();
+        jaasConfig.put("clientId", "id");
+        jaasConfig.put("clientSecret", "secret");
+        jaasConfig.put("scope", "myscope");
+        jaasConfig.put("useUserIdentity", "true");
+
+        JwtRetriever retriever = OAuthBearerLoginCallbackHandler.createJwtRetriever(configs, "OAUTHBEARER", jaasConfig);
+        assertNotNull(retriever);
     }
 }

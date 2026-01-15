@@ -1,56 +1,48 @@
 package io.confluent.oauth.azure.managedidentity;
 
-import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.security.auth.SaslExtensions;
 import org.apache.kafka.common.security.auth.SaslExtensionsCallback;
+import org.apache.kafka.common.security.oauthbearer.JwtRetriever;
+import org.apache.kafka.common.security.oauthbearer.JwtValidator;
+import org.apache.kafka.common.security.oauthbearer.JwtValidatorException;
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken;
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerTokenCallback;
-import org.apache.kafka.common.security.oauthbearer.internals.OAuthBearerClientInitialResponse;
-import org.apache.kafka.common.security.oauthbearer.internals.secured.AccessTokenRetriever;
-import org.apache.kafka.common.security.oauthbearer.internals.secured.AccessTokenValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.UnsupportedCallbackException;
-import javax.security.sasl.SaslException;
-import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class OAuthBearerLoginCallbackHandlerTest {
     private OAuthBearerLoginCallbackHandler handler;
-    private AccessTokenRetriever retriever;
-    private AccessTokenValidator validator;
+    private JwtRetriever retriever;
+    private JwtValidator validator;
 
     @BeforeEach
     void setUp() {
         handler = new OAuthBearerLoginCallbackHandler();
-        retriever = mock(AccessTokenRetriever.class);
-        validator = mock(AccessTokenValidator.class);
+        retriever = mock(JwtRetriever.class);
+        validator = mock(JwtValidator.class);
         handler.init(retriever, validator);
     }
 
     @Test
-    void testInitSetsInitializedAndCallsRetrieverInit() throws IOException {
-        AccessTokenRetriever retrieverMock = mock(AccessTokenRetriever.class);
-        AccessTokenValidator validatorMock = mock(AccessTokenValidator.class);
-        doNothing().when(retrieverMock).init();
+    void testInitSetsInitialized() {
         OAuthBearerLoginCallbackHandler h = new OAuthBearerLoginCallbackHandler();
-        h.init(retrieverMock, validatorMock);
-        verify(retrieverMock).init();
-    }
-
-    @Test
-    void testInitThrowsOnRetrieverInitError() throws IOException {
-        AccessTokenRetriever retrieverMock = mock(AccessTokenRetriever.class);
-        AccessTokenValidator validatorMock = mock(AccessTokenValidator.class);
-        doThrow(new IOException("fail")).when(retrieverMock).init();
-        OAuthBearerLoginCallbackHandler h = new OAuthBearerLoginCallbackHandler();
-        assertThrows(KafkaException.class, () -> h.init(retrieverMock, validatorMock));
+        h.init(retriever, validator);
+        assertNotNull(h.getJwtRetriever());
     }
 
     @Test
@@ -64,13 +56,21 @@ class OAuthBearerLoginCallbackHandlerTest {
     }
 
     @Test
+    void testHandleOAuthBearerTokenCallbackValidatorError() throws Exception {
+        OAuthBearerTokenCallback cb = mock(OAuthBearerTokenCallback.class);
+        when(retriever.retrieve()).thenReturn("token");
+        when(validator.validate("token")).thenThrow(new JwtValidatorException("fail", null));
+        handler.handle(new Callback[]{cb});
+        verify(cb).error(any(), any(), any());
+    }
+
+    @Test
     void testHandleSaslExtensionsCallbackValid() throws Exception {
         Map<String, Object> config = new HashMap<>();
         config.put("extension_test", "val");
         SaslExtensionsCallback cb = mock(SaslExtensionsCallback.class);
         OAuthBearerLoginCallbackHandler h = new OAuthBearerLoginCallbackHandler();
         h.init(retriever, validator);
-        // Use reflection to set moduleOptions
         var field = OAuthBearerLoginCallbackHandler.class.getDeclaredField("moduleOptions");
         field.setAccessible(true);
         field.set(h, config);
@@ -81,14 +81,13 @@ class OAuthBearerLoginCallbackHandlerTest {
     @Test
     void testHandleSaslExtensionsCallbackInvalid() throws Exception {
         Map<String, Object> config = new HashMap<>();
-        config.put("extension_test", ""); // invalid value
+        config.put("extension_test", "");
         SaslExtensionsCallback cb = mock(SaslExtensionsCallback.class);
         OAuthBearerLoginCallbackHandler h = new OAuthBearerLoginCallbackHandler();
         h.init(retriever, validator);
         var field = OAuthBearerLoginCallbackHandler.class.getDeclaredField("moduleOptions");
         field.setAccessible(true);
         field.set(h, config);
-        // Should throw ConfigException due to invalid extension
         assertThrows(ConfigException.class, () -> h.handle(new Callback[]{cb}));
     }
 
@@ -107,12 +106,10 @@ class OAuthBearerLoginCallbackHandlerTest {
 
     @Test
     void testCloseCallsRetrieverClose() throws Exception {
-        AccessTokenRetriever retrieverMock = mock(AccessTokenRetriever.class);
-        AccessTokenValidator validatorMock = mock(AccessTokenValidator.class);
+        JwtRetriever retrieverMock = mock(JwtRetriever.class);
         OAuthBearerLoginCallbackHandler h = new OAuthBearerLoginCallbackHandler();
-        h.init(retrieverMock, validatorMock);
+        h.init(retrieverMock, validator);
         h.close();
         verify(retrieverMock).close();
     }
 }
-

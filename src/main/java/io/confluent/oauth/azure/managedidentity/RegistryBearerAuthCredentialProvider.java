@@ -2,22 +2,29 @@ package io.confluent.oauth.azure.managedidentity;
 
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import io.confluent.kafka.schemaregistry.client.security.bearerauth.BearerAuthCredentialProvider;
-import org.apache.kafka.common.KafkaException;
+import java.net.URL;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.common.security.JaasContext;
-import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken;
-import org.apache.kafka.common.security.oauthbearer.internals.secured.*;
+import org.apache.kafka.common.security.oauthbearer.ClientJwtValidator;
+import org.apache.kafka.common.security.oauthbearer.JwtRetriever;
+import org.apache.kafka.common.security.oauthbearer.JwtRetrieverException;
+import org.apache.kafka.common.security.oauthbearer.JwtValidator;
+import org.apache.kafka.common.security.oauthbearer.JwtValidatorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.AppConfigurationEntry;
-import java.io.IOException;
-import java.net.URL;
-import java.util.*;
 
-import static io.confluent.oauth.azure.managedidentity.OAuthBearerLoginCallbackHandler.createAccessTokenRetriever;
+import static io.confluent.oauth.azure.managedidentity.OAuthBearerLoginCallbackHandler.createJwtRetriever;
+import org.apache.kafka.common.security.oauthbearer.internals.secured.ConfigurationUtils;
+import org.apache.kafka.common.security.oauthbearer.internals.secured.JaasOptionsUtils;
 
 public class RegistryBearerAuthCredentialProvider implements BearerAuthCredentialProvider {
 
@@ -28,8 +35,8 @@ public class RegistryBearerAuthCredentialProvider implements BearerAuthCredentia
     private String targetIdentityPoolId;
     private Map<String, Object> moduleOptions;
 
-    private AccessTokenRetriever accessTokenRetriever;
-    private AccessTokenValidator accessTokenValidator;
+    private JwtRetriever jwtRetriever;
+    private JwtValidator jwtValidator;
     private boolean isInitialized;
 
 
@@ -69,37 +76,39 @@ public class RegistryBearerAuthCredentialProvider implements BearerAuthCredentia
 
         String saslMechanism = cu.validateString(SaslConfigs.SASL_MECHANISM);
         moduleOptions = JaasOptionsUtils.getOptions(saslMechanism, appConfigurationEntries);
-        AccessTokenRetriever accessTokenRetriever = createAccessTokenRetriever(myConfigs, saslMechanism, moduleOptions);
 
-        AccessTokenValidator accessTokenValidator = AccessTokenValidatorFactory.create(myConfigs, saslMechanism);
-        init(accessTokenRetriever, accessTokenValidator);
+        JwtRetriever jwtRetriever = createJwtRetriever(myConfigs, saslMechanism, moduleOptions);
+        JwtValidator jwtValidator = createJwtValidator(myConfigs, saslMechanism);
+
+        init(jwtRetriever, jwtValidator);
     }
 
     /*
      * Package-visible for testing.
      */
 
-    void init(AccessTokenRetriever accessTokenRetriever, AccessTokenValidator accessTokenValidator) {
-        this.accessTokenRetriever = accessTokenRetriever;
-        this.accessTokenValidator = accessTokenValidator;
-
-        try {
-            this.accessTokenRetriever.init();
-        } catch (IOException e) {
-            throw new KafkaException("The OAuth login configuration encountered an error when initializing the AccessTokenRetriever", e);
-        }
-
+    void init(JwtRetriever jwtRetriever, JwtValidator jwtValidator) {
+        this.jwtRetriever = jwtRetriever;
+        this.jwtValidator = jwtValidator;
         isInitialized = true;
     }
 
+    private static JwtValidator createJwtValidator(Map<String, ?> configs, String saslMechanism) {
+        JwtValidator jwtValidator = new ClientJwtValidator();
+        jwtValidator.configure(configs, saslMechanism, List.of());
+        return jwtValidator;
+    }
 
     @Override
     public String getBearerToken(URL url) {
+        if (!isInitialized)
+            return "";
+
         try {
-            String accessToken = accessTokenRetriever.retrieve();
-            OAuthBearerToken token = accessTokenValidator.validate(accessToken);
+            String accessToken = jwtRetriever.retrieve();
+            jwtValidator.validate(accessToken);
             return accessToken;
-        } catch (ValidateException | IOException e) {
+        } catch (JwtRetrieverException | JwtValidatorException e) {
             log.warn(e.getMessage(), e);
             return "";
         }

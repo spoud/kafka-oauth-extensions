@@ -51,29 +51,23 @@ import javax.net.ssl.SSLSocketFactory;
 
 import io.confluent.oauth.azure.managedidentity.utils.WorkloadIdentityUtils;
 import org.apache.kafka.common.KafkaException;
-
-
-import org.apache.kafka.common.security.oauthbearer.internals.secured.AccessTokenRetriever;
+import org.apache.kafka.common.security.oauthbearer.JwtRetriever;
+import org.apache.kafka.common.security.oauthbearer.JwtRetrieverException;
 import org.apache.kafka.common.security.oauthbearer.internals.secured.Retry;
 import org.apache.kafka.common.security.oauthbearer.internals.secured.UnretryableException;
-import org.apache.kafka.common.utils.Utils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <code>HttpAccessTokenRetriever</code> is an {@link AccessTokenRetriever} copied and derived from Apacha Kafka
- * {@link org.apache.kafka.common.security.oauthbearer.internals.secured.HttpAccessTokenRetriever}.
+ * <code>HttpAccessTokenRetriever</code> is a {@link JwtRetriever} copied and derived from Apache Kafka.
  *
  * This version is designed to work with Azure Managed Identities via the link-local Instance Metadata Service (IMDS).
- * This service does not require authentication, and while an id/secret config is required, it is ignored.  Other
- * changes are:
- * - Uses HTTP GET instead of POST and does not send a POST body.
- * - Sets a static HTTP Header - Metadata: true .
  *
- * @see AccessTokenRetriever
+ * @see JwtRetriever
  */
 
-public class HttpAccessTokenRetriever implements AccessTokenRetriever {
+public class HttpAccessTokenRetriever implements JwtRetriever {
 
     private static final Logger log = LoggerFactory.getLogger(HttpAccessTokenRetriever.class);
 
@@ -175,14 +169,21 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
      */
 
     @Override
-    public String retrieve() throws IOException {
+    public String retrieve() throws JwtRetrieverException {
+        try {
+            return retrieveInternal();
+        } catch (Exception e) {
+            throw new JwtRetrieverException(e);
+        }
+    }
+
+    private String retrieveInternal() throws IOException {
         String responseBody;
 
         try {
             // TODO: should we use the AZURE_FEDERATED_TOKEN_FILE variable to enable workload identity? And AZURE_AUTHORITY_HOST to use for the endpoint url?
-            if (this.useWorkloadIdentity){
+            if (this.useWorkloadIdentity) {
                 log.debug("using workload identity to get token");
-                // AccessToken https://github.com/Azure/azure-sdk-for-java/blob/main/sdk/core/azure-core/src/main/java/com/azure/core/credential/AccessToken.java
                 TokenCredential workloadIdentityCredential = WorkloadIdentityUtils.createWorkloadIdentityCredentialFromEnvironment();
                 TokenRequestContext tokenRequestContext = WorkloadIdentityUtils.createTokenRequestContextFromEnvironment(scope);
                 AccessToken azureIdentityAccessToken = workloadIdentityCredential.getTokenSync(tokenRequestContext);
@@ -200,12 +201,11 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
             }
 
             String authorizationHeader = formatAuthorizationHeader(clientId, clientSecret);
-            String requestBody = requestMethod == "GET" ? null : formatRequestBody(scope);
+            String requestBody = "GET".equals(requestMethod) ? null : formatRequestBody(scope);
             Retry<String> retry = new Retry<>(loginRetryBackoffMs, loginRetryBackoffMaxMs);
 
             final Map<String, String> requestHeaders = new HashMap<>(headers);
             requestHeaders.put(AUTHORIZATION_HEADER, authorizationHeader);
-
 
             responseBody = retry.execute(() -> {
                 HttpURLConnection con = null;
@@ -230,7 +230,7 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
                 throw (IOException) e.getCause();
             else
                 throw new KafkaException(e.getCause());
-        } catch (CredentialUnavailableException ex){
+        } catch (CredentialUnavailableException ex) {
             log.error("Error getting token from AzureAD: {}", ex.getMessage());
             throw new KafkaException(ex);
         }
@@ -366,7 +366,7 @@ public class HttpAccessTokenRetriever implements AccessTokenRetriever {
         clientSecret = sanitizeString("the token endpoint request client secret parameter", clientSecret);
 
         String s = String.format("%s:%s", clientId, clientSecret);
-        String encoded = Base64.getUrlEncoder().encodeToString(Utils.utf8(s));
+        String encoded = Base64.getUrlEncoder().encodeToString(s.getBytes(StandardCharsets.UTF_8));
         return String.format("Basic %s", encoded);
     }
 
