@@ -3,52 +3,33 @@ package io.confluent.oauth.azure.managedidentity;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SaslConfigs;
-import org.apache.kafka.common.security.oauthbearer.internals.secured.AccessTokenRetriever;
-import org.apache.kafka.common.security.oauthbearer.internals.secured.AccessTokenValidator;
-import org.apache.kafka.common.security.oauthbearer.internals.secured.ValidateException;
+import org.apache.kafka.common.security.oauthbearer.JwtRetriever;
+import org.apache.kafka.common.security.oauthbearer.JwtRetrieverException;
+import org.apache.kafka.common.security.oauthbearer.JwtValidator;
+import org.apache.kafka.common.security.oauthbearer.JwtValidatorException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.security.auth.login.AppConfigurationEntry;
-import java.io.IOException;
 import java.net.URL;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class RegistryBearerAuthCredentialProviderTest {
     private RegistryBearerAuthCredentialProvider provider;
-    private AccessTokenRetriever retriever;
-    private AccessTokenValidator validator;
+    private JwtRetriever retriever;
+    private JwtValidator validator;
 
     @BeforeEach
     void setUp() {
         provider = new RegistryBearerAuthCredentialProvider();
-        retriever = mock(AccessTokenRetriever.class);
-        validator = mock(AccessTokenValidator.class);
+        retriever = mock(JwtRetriever.class);
+        validator = mock(JwtValidator.class);
         provider.init(retriever, validator);
-    }
-
-    @Test
-    void testInitSetsInitializedAndCallsRetrieverInit() throws IOException {
-        AccessTokenRetriever retrieverMock = mock(AccessTokenRetriever.class);
-        AccessTokenValidator validatorMock = mock(AccessTokenValidator.class);
-        doNothing().when(retrieverMock).init();
-        RegistryBearerAuthCredentialProvider p = new RegistryBearerAuthCredentialProvider();
-        p.init(retrieverMock, validatorMock);
-        verify(retrieverMock).init();
-    }
-
-    @Test
-    void testInitThrowsOnRetrieverInitError() throws IOException {
-        AccessTokenRetriever retrieverMock = mock(AccessTokenRetriever.class);
-        AccessTokenValidator validatorMock = mock(AccessTokenValidator.class);
-        doThrow(new IOException("fail")).when(retrieverMock).init();
-        RegistryBearerAuthCredentialProvider p = new RegistryBearerAuthCredentialProvider();
-        assertThrows(RuntimeException.class, () -> p.init(retrieverMock, validatorMock));
     }
 
     @Test
@@ -61,16 +42,16 @@ class RegistryBearerAuthCredentialProviderTest {
     }
 
     @Test
-    void testGetBearerTokenReturnsEmptyOnException() throws Exception {
-        when(retriever.retrieve()).thenThrow(new IOException("fail"));
+    void testGetBearerTokenReturnsEmptyOnRetrieveException() throws Exception {
+        when(retriever.retrieve()).thenThrow(new JwtRetrieverException(new RuntimeException("fail")));
         String token = provider.getBearerToken(new URL("http://localhost"));
         assertEquals("", token);
     }
 
     @Test
-    void testGetBearerTokenReturnsEmptyOnValidateException() throws Exception {
+    void testGetBearerTokenReturnsEmptyOnValidatorException() throws Exception {
         when(retriever.retrieve()).thenReturn("token");
-        when(validator.validate("token")).thenThrow(new ValidateException("fail"));
+        when(validator.validate("token")).thenThrow(new JwtValidatorException("fail", null));
         String token = provider.getBearerToken(new URL("http://localhost"));
         assertEquals("", token);
     }
