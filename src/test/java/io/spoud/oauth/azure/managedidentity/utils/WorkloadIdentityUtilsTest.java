@@ -1,4 +1,4 @@
-package io.confluent.oauth.azure.managedidentity.utils;
+package io.spoud.oauth.azure.managedidentity.utils;
 
 import com.azure.identity.WorkloadIdentityCredential;
 import org.junit.jupiter.api.Test;

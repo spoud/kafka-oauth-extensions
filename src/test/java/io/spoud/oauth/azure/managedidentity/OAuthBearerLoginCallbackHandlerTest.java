@@ -1,4 +1,4 @@
-package io.confluent.oauth.azure.managedidentity;
+package io.spoud.oauth.azure.managedidentity;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.security.auth.SaslExtensions;

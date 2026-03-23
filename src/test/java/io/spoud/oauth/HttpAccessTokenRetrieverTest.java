@@ -1,10 +1,10 @@
-package io.confluent.oauth;
+package io.spoud.oauth;
 
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.AzureCliCredential;
 import com.azure.identity.AzureCliCredentialBuilder;
-import io.confluent.oauth.azure.managedidentity.utils.WorkloadIdentityUtils;
+import io.spoud.oauth.azure.managedidentity.utils.WorkloadIdentityUtils;
 import org.apache.kafka.common.security.oauthbearer.internals.secured.UnretryableException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

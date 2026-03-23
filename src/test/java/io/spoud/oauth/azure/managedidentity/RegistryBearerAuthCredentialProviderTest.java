@@ -1,4 +1,4 @@
-package io.confluent.oauth.azure.managedidentity;
+package io.spoud.oauth.azure.managedidentity;
 
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import org.apache.kafka.common.config.ConfigException;
