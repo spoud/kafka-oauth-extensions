@@ -4,6 +4,93 @@ This is a fork of the Confluent OAuth extensions for Apache Kafka, with addition
 
 Apache Kafka client library providing additional integrations relating to OAuth/OIDC integrations with Confluent Cloud and Apache Kafka.
 
+## Artifacts and classpath usage
+
+Use the artifact that matches how you run the client:
+
+- **Confluent Platform CLI tools or any environment that already ships Kafka classes:** use the thin jar `kafka-oauth-extensions-<version>.jar`.
+- **Standalone/manual classpath setup:** the release also includes `kafka-oauth-extensions-<version>-all.jar`, but it intentionally excludes Kafka classes so the runtime's Kafka distribution stays authoritative.
+
+For Maven or Gradle consumption, add GitHub Packages for this repository and depend on the thin jar as the default artifact:
+
+```groovy
+repositories {
+    mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.github.com/spoud/kafka-oauth-extensions")
+        credentials {
+            username = System.getenv("GITHUB_ACTOR")
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+
+dependencies {
+    implementation "io.spoud.kafka.oauth:kafka-oauth-extensions:<version>"
+
+    // Optional secondary artifact if you specifically want the shadow jar.
+    runtimeOnly "io.spoud.kafka.oauth:extensions-shadow:<version>"
+}
+```
+
+If you consume from GitHub Packages outside GitHub Actions, provide credentials that can read packages for this repository. If you only need the CLI/classpath jar, you can download the release asset directly instead of configuring Maven/Gradle.
+
+## Compatibility smoke tests
+
+The repository includes a Docker/Compose-based smoke test that checks whether the thin jar starts cleanly on both:
+
+- Apache Kafka OSS tooling
+- Confluent Platform tooling
+
+It is intentionally a startup/classpath compatibility check, not a full broker integration test. The harness mounts the built thin jar into each container, puts it on `CLASSPATH`, runs the Kafka CLI, and fails on linkage errors such as `NoSuchMethodError` or `NoClassDefFoundError`.
+
+Run it locally after building the project:
+
+```bash
+./gradlew build
+bash ./scripts/compatibility-smoke.sh
+```
+
+By default the script uses the thin jar from `build/libs`. You can also pass an explicit jar path:
+
+```bash
+bash ./scripts/compatibility-smoke.sh build/libs/kafka-oauth-extensions-<version>.jar
+```
+
+The script also fails fast if the selected jar bundles Kafka runtime classes (`org/apache/kafka/**` or `kafka/**`), which protects against the broken pre-fix `1.5-SNAPSHOT-all.jar` packaging.
+
+## Real Keycloak + Kafka integration test
+
+The repository includes a no-mocking end-to-end integration harness for the federated client-authentication flow.
+
+It uses:
+
+- a real `kind` Kubernetes cluster
+- a real ServiceAccount token minted with `kubectl create token`
+- a real Keycloak 26.5.5 container with federated JWT client authentication enabled
+- a real Apache Kafka 4.2.0 broker configured with SASL/OAUTHBEARER validation against Keycloak JWKS
+- both Apache Kafka OSS and Confluent Platform CLI containers performing actual topic operations
+- the actual `io.spoud.oauth.KeycloakFederatedLoginCallbackHandler` from this repository
+
+The topology keeps the Kubernetes part real: the `kind` API server signs the ServiceAccount token, an HTTPS issuer proxy forwards the live discovery/JWKS endpoints from the cluster, Keycloak exchanges the Kubernetes JWT for a Keycloak access token, and Kafka validates that token on the broker listener.
+
+Run it locally with:
+
+```bash
+bash ./scripts/keycloak-integration-smoke.sh
+```
+
+Prerequisites:
+
+- Docker
+- `kind`
+- `kubectl`
+- `keytool` (from the JDK)
+
+By default the script uses the shadow jar from `build/libs` because the manual CLI `CLASSPATH` setup needs this project's transitive dependencies. The existing compatibility smoke remains the thin-jar startup/classpath guard for Apache Kafka OSS and Confluent Platform tooling.
+
+This integration test proves actual broker operations (`create`, `list`, `describe`) succeed through Keycloak-issued OAuth tokens for both client distributions.
+
 ## Authenticating to Confluent Cloud via OAuth, using Azure Managed Identities
 
 Example Kafka client config and JAAS config for authenticating to Confluent Cloud using Azure Managed Identities / Pod Identity:
@@ -131,14 +218,17 @@ sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginMo
 # -Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/token
 ```
 
-### Optional: Keycloak client ID
+### Optional: `client_id` request parameter
 
-If your Keycloak client configuration requires a `client_id` in the token request, add it as a
-JAAS option:
+For the federated Kubernetes ServiceAccount flow, you usually **omit** `clientId`.
+Keycloak can resolve the client from the JWT issuer + subject.
+
+If you do need to send a `client_id`, Keycloak requires it to match the JWT `sub` claim, not the
+internal Keycloak client alias:
 
 ```properties
 sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \
-  clientId="kafka-demo-app";
+  clientId="system:serviceaccount:my-namespace:my-serviceaccount";
 ```
 
 ### Kubernetes pod configuration
@@ -192,7 +282,7 @@ To debug the OAuth flow, you can enable debug logging for the OAuthBearerLoginMo
 
 ```bash
 export KAFKA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=${AZURE_AUTHORITY_HOST}${AZURE_TENANT_ID}/oauth2/v2.0/token"
-export CLASSPATH="build/libs/kafka-oauth-extensions-1.2-SNAPSHOT-all.jar"
+export CLASSPATH="build/libs/kafka-oauth-extensions-<version>.jar"
 kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER} --command-config /tmp/client.properties --list
 ```
 

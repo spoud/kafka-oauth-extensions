@@ -60,10 +60,12 @@ import java.util.Optional;
  * sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;
  * }</pre>
  *
- * <p>Optionally, set the Keycloak client ID in the JAAS stanza when Keycloak requires it:
+ * <p>Usually no {@code client_id} parameter is needed for Keycloak federated JWT client
+ * authentication. If you do set one in the JAAS stanza, Keycloak requires it to match the
+ * JWT {@code sub} claim rather than the internal Keycloak client alias:
  * <pre>{@code
  * sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \
- *   clientId="kafka-demo-app";
+ *   clientId="system:serviceaccount:my-namespace:my-serviceaccount";
  * }</pre>
  */
 public class KeycloakFederatedLoginCallbackHandler implements AuthenticateCallbackHandler {
@@ -77,7 +79,7 @@ public class KeycloakFederatedLoginCallbackHandler implements AuthenticateCallba
     /** Kafka property: path to the projected Kubernetes ServiceAccount token file (required). */
     public static final String K8S_TOKEN_FILE_CONFIG = "oauth.federated.k8s.token.file";
 
-    /** Optional JAAS option: Keycloak client ID. Added to the POST body when present. */
+    /** Optional JAAS option: {@code client_id} to send in the token request. */
     public static final String CLIENT_ID_OPTION = "clientId";
 
     private static final String EXTENSION_PREFIX = "extension_";

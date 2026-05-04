@@ -18,10 +18,22 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v3
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.35.0
+      - name: Set up kind
+        run: |
+          curl -fsSL -o ./kind https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build with Gradle
         run: ./gradlew build
       - name: Run tests
         run: ./gradlew cleanTest test
-
+      - name: Run compatibility smoke tests
+        run: bash ./scripts/compatibility-smoke.sh
+      - name: Run real Keycloak integration smoke test
+        run: bash ./scripts/keycloak-integration-smoke.sh
