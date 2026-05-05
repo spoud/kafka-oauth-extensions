@@ -5,7 +5,7 @@ plugins {
 }
 
 group='io.spoud.kafka.oauth'
-version='1.5-SNAPSHOT'
+version='1.6-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -42,19 +42,26 @@ test {
     }
 }
 
-
 shadowJar {
+    archiveClassifier = 'all'
+
     // Exclude classes that are provided at runtime by the Kafka classpath.
-    // Avoids SLF4J version conflicts when loaded alongside Kafka tools.
+    // Avoids conflicts when loaded alongside Kafka or Confluent Platform tools.
+    exclude 'org/apache/kafka/**'
+    exclude 'kafka/**'
     exclude 'org/slf4j/**'
     exclude 'META-INF/services/org.slf4j*'
 }
 
 publishing {
   publications {
+    mavenJava(MavenPublication) {
+      from components.java
+      artifactId = project.name
+    }
     shadow(MavenPublication) {
-      from components.shadow
       artifactId = 'extensions-shadow'
+      artifact tasks.shadowJar
     }
   }
   repositories {

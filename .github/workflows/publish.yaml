@@ -35,7 +35,9 @@ jobs:
       - name: upload
         run: |
             cd ${{github.workspace}}
-            gh release upload ${{github.event.release.tag_name}} build/libs/kafka-oauth-extensions-*-all.jar
+            gh release upload ${{github.event.release.tag_name}} \
+              build/libs/kafka-oauth-extensions-*.jar \
+              --clobber
         env:
-          GITHUB_TOKEN: ${{ github.TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash

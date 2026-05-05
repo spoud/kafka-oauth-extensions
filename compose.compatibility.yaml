@@ -1,0 +1,26 @@
+services:
+  apache-kafka-oss-cli:
+    image: apache/kafka:4.2.0
+    working_dir: /workspace
+    environment:
+      TEST_JAR_NAME: ${TEST_JAR_NAME}
+      COMPATIBILITY_BOOTSTRAP_SERVER: ${COMPATIBILITY_BOOTSTRAP_SERVER:-localhost:9092}
+      COMPATIBILITY_COMMAND: /opt/kafka/bin/kafka-topics.sh --help
+    volumes:
+      - .:/workspace:ro
+    entrypoint:
+      - /bin/bash
+      - /workspace/scripts/run-compatibility-container.sh
+
+  confluent-platform-cli:
+    image: confluentinc/cp-kafka:8.2.0
+    working_dir: /workspace
+    environment:
+      TEST_JAR_NAME: ${TEST_JAR_NAME}
+      COMPATIBILITY_BOOTSTRAP_SERVER: ${COMPATIBILITY_BOOTSTRAP_SERVER:-localhost:9092}
+      COMPATIBILITY_COMMAND: kafka-topics --help
+    volumes:
+      - .:/workspace:ro
+    entrypoint:
+      - /bin/bash
+      - /workspace/scripts/run-compatibility-container.sh

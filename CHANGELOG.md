@@ -1,35 +1,20 @@
 
-# 1.0-SNAPSHOT and earlier
+# 1.7-SNAPSHOT (planned)
 
-Initial version, client code adapted from Apache Kafka 3.3.1.  Allows JWT
-OAuth tokens to be fetch from Azure IMDS via HTTP GET.
+* Remove all deprecated `io.confluent.oauth.*` proxy classes
 
-# 1.1-SNAPSHOT
+# 1.6-SNAPSHOT
 
-Updated to use Apache Kafka 3.6.1.
-
-=> over at https://github.com/confluentinc/confluent-oauth-extensions
-
-
-# 1.2-SNAPSHOT
-
-Migrated to spoud github repository https://github.com/spoud/kafka-oauth-extensions
-
-* workload identity support
-* user account support with azure cli
-* support for schema registry
-* introduced github package
-
-
-# 1.3-SNAPSHOT
-
-* Updated to Apache Kafka 4
-* Testing
-* Dependabot
-
-# 1.4-SNAPSHOT
-
-* CI and dependency bumps
+* Packaging fixes for Confluent Platform compatibility
+  * Publish the thin jar as the primary artifact for Kafka/Confluent runtime classpaths
+  * Keep the shadow jar as a secondary artifact while excluding bundled Kafka classes to avoid classpath conflicts
+  * Release assets now include both the thin jar and the shadow jar
+* Add Docker/Compose-based compatibility smoke tests for Apache Kafka OSS and Confluent Platform CLI startup
+* Add a real Keycloak federated client-auth integration test using a no-mocking `kind` + Keycloak + Kafka harness
+  * Mint a real Kubernetes ServiceAccount token with `kubectl create token`
+  * Validate real broker operations from both Apache Kafka OSS and Confluent Platform CLI containers
+* Deprecated `io.confluent.oauth.*` proxy classes remain available in 1.6-SNAPSHOT
+  * Planned removal moved to 1.7-SNAPSHOT
 
 # 1.5-SNAPSHOT
 
@@ -50,6 +35,33 @@ Migrated to spoud github repository https://github.com/spoud/kafka-oauth-extensi
   * All `io.confluent.oauth.*` counterparts kept as deprecated proxies that log a warning on use;
     will be removed in 1.6-SNAPSHOT
 
-# 1.6-SNAPSHOT (planned)
+# 1.4-SNAPSHOT
 
-* Remove all deprecated `io.confluent.oauth.*` proxy classes
+* CI and dependency bumps
+
+# 1.3-SNAPSHOT
+
+* Updated to Apache Kafka 4
+* Testing
+* Dependabot
+
+# 1.2-SNAPSHOT
+
+Migrated to spoud github repository https://github.com/spoud/kafka-oauth-extensions
+
+* workload identity support
+* user account support with azure cli
+* support for schema registry
+* introduced github package
+
+# 1.1-SNAPSHOT
+
+Updated to use Apache Kafka 3.6.1.
+
+=> over at https://github.com/confluentinc/confluent-oauth-extensions
+
+
+# 1.0-SNAPSHOT and earlier
+
+Initial version, client code adapted from Apache Kafka 3.3.1.  Allows JWT
+OAuth tokens to be fetch from Azure IMDS via HTTP GET.
