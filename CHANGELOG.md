@@ -1,7 +1,7 @@
 
-# 1.7-SNAPSHOT (planned)
+# 1.7-SNAPSHOT
 
-* Remove all deprecated `io.confluent.oauth.*` proxy classes
+* Removed all deprecated `io.confluent.oauth.*` proxy classes — migrate to the canonical `io.spoud.oauth.*` equivalents
 
 # 1.6-SNAPSHOT
 
