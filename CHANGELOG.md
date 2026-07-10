@@ -1,4 +1,29 @@
 
+# 1.8-SNAPSHOT
+
+* Two new `BearerAuthCredentialProvider` implementations for Schema Registry authentication via
+  RFC 7523 JWT Bearer client assertion — filling a gap in the built-in credential sources, none
+  of which support JWT assertion (`OAUTHBEARER` and `SASL_OAUTHBEARER_INHERIT` only support
+  `client_id` + `client_secret`; `STATIC_TOKEN` requires a long-lived token). On JDK 24+
+  (JEP 486), `Subject.getSubject(AccessControlContext)` throws `UnsupportedOperationException`
+  because the Security Manager is no longer functional, so any Subject-inheritance approach
+  also fails at runtime on modern JDKs.
+  * `io.spoud.oauth.KeycloakFederatedRegistryBearerAuthCredentialProvider` (`KEYCLOAK_FEDERATED`) —
+    uses the `oauth.federated.*` config namespace from `KeycloakFederatedLoginCallbackHandler`;
+    best when Kafka and Schema Registry auth share the same property file; own 30 s cache with
+    best-effort stale-token fallback on refresh failure
+  * `io.spoud.oauth.JwtAssertionBearerAuthCredentialProvider` (`JWT_ASSERTION`) —
+    uses the standard `bearer.auth.*` namespace from `SchemaRegistryClientConfig`; delegates
+    caching and claim validation to the SR client's own `CachedOauthTokenRetriever`; configurable
+    expiry buffer (default 300 s); propagates exceptions on refresh failure
+  * Both registered via ServiceLoader; both re-read the assertion file on each refresh for
+    transparent Kubernetes projected token rotation
+* Shadow jar (`-all`): service descriptor for `BearerAuthCredentialProvider` now lists all
+  built-in Confluent providers (`STATIC_TOKEN`, `OAUTHBEARER`, `SASL_OAUTHBEARER_INHERIT`,
+  `CUSTOM`) alongside the new providers, so the shadow jar works standalone
+* Dependency bumps: kafka-clients 4.3.1, kafka-schema-registry-client 8.3.0,
+  JUnit 6.1.1, Shadow plugin 9.4.3, Gradle 9.6.1, actions/checkout v7
+
 # 1.7-SNAPSHOT
 
 * Removed all deprecated `io.confluent.oauth.*` proxy classes — migrate to the canonical `io.spoud.oauth.*` equivalents

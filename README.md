@@ -188,6 +188,110 @@ echo '{"make": "Ford", "model": "Mustang", "price": 10000}' |kafka-avro-console-
 ```
 
 
+## Schema Registry Authentication via JWT Bearer Assertion
+
+Two providers ship in this library for authenticating to a Confluent-compatible Schema Registry
+(such as Apicurio Registry) using a Kubernetes ServiceAccount JWT as a client assertion. Both
+perform an RFC 7523 JWT Bearer token exchange against Keycloak. They are registered via
+`ServiceLoader` and available after adding the jar to your classpath.
+
+| Provider | `bearer.auth.credentials.source` | Config namespace | Cache/validation |
+|---|---|---|---|
+| `KeycloakFederatedRegistryBearerAuthCredentialProvider` | `KEYCLOAK_FEDERATED` | `oauth.federated.*` | Own cache, 30 s buffer, exp-only, best-effort fallback |
+| `JwtAssertionBearerAuthCredentialProvider` | `JWT_ASSERTION` | `bearer.auth.*` | SR client `CachedOauthTokenRetriever`, configurable buffer (default 300 s), `ClientJwtValidator`, exception on failure |
+
+### Why built-in credential sources do not cover this use case
+
+Confluent Schema Registry ships four built-in `bearer.auth.credentials.source` values for OAuth
+bearer auth: `STATIC_TOKEN`, `OAUTHBEARER`, `SASL_OAUTHBEARER_INHERIT`, and `CUSTOM`. None
+supports RFC 7523 JWT Bearer client assertions:
+
+- **`STATIC_TOKEN`** — requires a long-lived token baked into the configuration; incompatible
+  with short-lived Kubernetes projected ServiceAccount tokens.
+- **`OAUTHBEARER`** and **`SASL_OAUTHBEARER_INHERIT`** — both fetch a token via
+  `client_id` + `client_secret` (HTTP Basic). Neither can use a JWT as the credential to exchange.
+- **`CUSTOM`** — loads any `BearerAuthCredentialProvider` by class name. Both providers in this
+  library are usable via `CUSTOM` as an alternative to their ServiceLoader aliases (see below).
+
+Additionally, on JDK 24 and later (JEP 486), `Subject.getSubject(AccessControlContext)` always
+throws `UnsupportedOperationException` because the Security Manager is no longer functional. Any
+approach that relied on inheriting a SASL `Subject` across threads fails at runtime on modern JDKs.
+
+### Using `KEYCLOAK_FEDERATED`
+
+Uses the same `oauth.federated.*` keys as `KeycloakFederatedLoginCallbackHandler`, so no new
+values need to be introduced in a pod that already configures the Kafka handler.
+
+```bash
+kafka-avro-console-consumer \
+  --bootstrap-server broker:9094 \
+  --topic my-topic \
+  --command-config /tmp/client.properties \
+  --formatter-property schema.registry.url=https://apicurio.example.com/apis/ccompat/v7 \
+  --formatter-property bearer.auth.credentials.source=KEYCLOAK_FEDERATED \
+  --formatter-property oauth.federated.token.endpoint.url=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/token \
+  --formatter-property oauth.federated.k8s.token.file=/var/run/secrets/tokens/kafka
+```
+
+| Property | Required | Description |
+|---|---|---|
+| `oauth.federated.token.endpoint.url` | Yes | Keycloak token endpoint URL |
+| `oauth.federated.k8s.token.file` | Yes | Path to the projected Kubernetes ServiceAccount token file |
+| `clientId` | No | Optional `client_id` to include in the token request |
+
+### Using `JWT_ASSERTION`
+
+Uses the standard `bearer.auth.*` namespace from `SchemaRegistryClientConfig`. Use this when
+configuring Schema Registry auth in isolation — for example when the Schema Registry and Kafka
+broker authenticate against different Keycloak realms, or when the Schema Registry client is
+configured independently of the Kafka consumer.
+
+```bash
+kafka-avro-console-consumer \
+  --bootstrap-server broker:9094 \
+  --topic my-topic \
+  --command-config /tmp/client.properties \
+  --formatter-property schema.registry.url=https://apicurio.example.com/apis/ccompat/v7 \
+  --formatter-property bearer.auth.credentials.source=JWT_ASSERTION \
+  --formatter-property bearer.auth.issuer.endpoint.url=https://keycloak.example.com/realms/myrealm/protocol/openid-connect/token \
+  --formatter-property bearer.auth.client.assertion.location=/var/run/secrets/tokens/kafka
+```
+
+| Property | Required | Description |
+|---|---|---|
+| `bearer.auth.issuer.endpoint.url` | Yes | Keycloak token endpoint URL |
+| `bearer.auth.client.assertion.location` | Yes | Path to the JWT file used as the `client_assertion` |
+| `bearer.auth.client.id` | No | Optional `client_id` to include in the token request |
+| `bearer.auth.cache.expiry.buffer.seconds` | No | Seconds before expiry to trigger a refresh (default: 300) |
+
+### CUSTOM alternative
+
+Both providers can also be loaded by class name, without relying on the ServiceLoader alias:
+
+```
+bearer.auth.credentials.source=CUSTOM
+bearer.auth.custom.provider.class=io.spoud.oauth.KeycloakFederatedRegistryBearerAuthCredentialProvider
+# or:
+bearer.auth.custom.provider.class=io.spoud.oauth.JwtAssertionBearerAuthCredentialProvider
+```
+
+### Token caching and failure behavior
+
+`KEYCLOAK_FEDERATED` keeps its own in-memory cache with a fixed 30-second expiry buffer. It only
+parses the `exp` claim for cache decisions and does not validate the token further. On refresh
+failure it logs a warning and returns the stale cached token as a best-effort fallback; if no
+cached token exists, it returns an empty string (resulting in a 401 from the registry).
+
+`JWT_ASSERTION` delegates caching to the SR client's own `CachedOauthTokenRetriever`. The expiry
+buffer is controlled by `bearer.auth.cache.expiry.buffer.seconds` (default 300 s). Tokens are
+validated via `ClientJwtValidator` before being cached. On refresh failure,
+`SchemaRegistryOauthTokenRetrieverException` is propagated to the caller.
+
+Both providers re-read the assertion token file on every refresh, so Kubernetes projected token
+rotation is handled transparently.
+
+---
+
 ## Keycloak Federated Client Authentication (Kubernetes ServiceAccount)
 
 Use `KeycloakFederatedLoginCallbackHandler` when your Kafka client runs on Kubernetes and you

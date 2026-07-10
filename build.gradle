@@ -5,7 +5,7 @@ plugins {
 }
 
 group='io.spoud.kafka.oauth'
-version='1.7-SNAPSHOT'
+version='1.8-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -44,6 +44,11 @@ test {
 
 shadowJar {
     archiveClassifier = 'all'
+
+    // Merge all META-INF/services/* descriptors (covers other service files from bundled jars).
+    // The BearerAuthCredentialProvider service file is handled by explicitly listing all providers
+    // in src/main/resources/META-INF/services/... — see note in that file.
+    mergeServiceFiles()
 
     // Exclude classes that are provided at runtime by the Kafka classpath.
     // Avoids conflicts when loaded alongside Kafka or Confluent Platform tools.
