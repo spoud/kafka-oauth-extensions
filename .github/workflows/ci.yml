@@ -4,7 +4,6 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
 
 jobs:
   build:
@@ -17,7 +16,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Set up kubectl
         uses: azure/setup-kubectl@v5
         with:
@@ -31,8 +30,6 @@ jobs:
         run: chmod +x gradlew
       - name: Build with Gradle
         run: ./gradlew build
-      - name: Run tests
-        run: ./gradlew cleanTest test
       - name: Run compatibility smoke tests
         run: bash ./scripts/compatibility-smoke.sh
       - name: Run real Keycloak integration smoke test
