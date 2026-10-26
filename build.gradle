@@ -20,7 +20,7 @@ dependencies {
     implementation(group: 'io.confluent', name: 'kafka-schema-registry-client', version: '8.3.0') {
         exclude group: 'org.apache.kafka', module: 'kafka-clients'
     }
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.4'
     implementation 'org.bitbucket.b_c:jose4j:0.9.7'
     implementation 'org.slf4j:slf4j-api:2.0.20'
     implementation 'com.azure:azure-identity:1.18.7'
